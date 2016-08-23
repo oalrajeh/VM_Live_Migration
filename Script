@@ -1,0 +1,176 @@
+#!/bin/bash
+# Purpose: Automation Live Migration
+# Author: Osama Alrajeh
+# Last updated on : 21 -08-2016
+# -----------------------------------------------
+
+#Number of test
+i=210
+#flag 
+z=0
+#when to start migration
+sleeptime="1m"
+#Speed of migration
+speed="none"
+#workload name
+workload=""
+#workload type
+wtype="base"
+#PM source
+sourceIP=
+#PM destination
+destinationIP=
+#VM IP
+VMip=
+
+for ((x = 1; x <= i; x++))
+do
+case $x in
+		[0-9]|10)
+workload="compiler.compiler"
+;;
+(1[1-9]|20)
+workload="compiler.sunflow"
+;;
+(2[1-9]|30)
+workload="compress"
+;;
+(3[1-9]|40)
+workload="crypto.aes"
+;;
+(4[1-9]|50)
+workload="crypto.rsa"
+;;
+(5[1-9]|60)
+workload="crypto.signverify"
+;;
+(6[1-9]|70)
+workload="derby"
+;;
+(7[1-9]|80)
+workload="mpegaudio"
+;;
+(8[1-9]|90)
+workload="scimark.fft.large"
+;;
+(9[1-9]|100)
+workload="scimark.lu.large"
+;;
+(10[1-9]|110)
+workload="scimark.sor.large"
+;;
+(11[1-9]|120)
+workload="scimark.sparse.large"
+;;
+(12[1-9]|130)
+workload="scimark.monte_carlo"
+;;
+(13[1-9]|140)
+workload="scimark.fft.small"
+;;
+(14[1-9]|150)
+workload="scimark.lu.small"
+;;
+(15[1-9]|160)
+workload="scimark.sor.small"
+;;
+(16[1-9]|170)
+workload="scimark.sparse.small"
+;;
+(17[1-9]|180)
+workload="serial"
+;;
+(18[1-9]|190)
+workload="sunflow"
+;;
+(19[1-9]|200)
+workload="xml.transform"
+;;
+*)
+workload="xml.validation";;
+esac
+
+
+#Check the location of the VM
+if [ $z == 0 ]; then
+#restart the VM
+sudo virsh destroy generic
+sudo virsh start generic
+sleep 4m 
+
+#clear the caches
+#ssh -n -f $VMip "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches && swapoff -a && swapon -a'"
+#sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches && swapoff -a && swapon -a'
+#ssh -n -f $destinationIP "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches && swapoff -a && swapon -a'"
+
+#Run the workload
+echo Start $workload workload 
+ssh -n -f $VMip memusg "sh -c 'cd /SPECjvm2008; nohup sudo java -jar SPECjvm2008.jar $workload --base -wt 0 -ikv> /dev/null 2>&1'&"
+#ssh -n -f $VMip "sh -c 'sudo stress -m 1 --vm-bytes 1024M -t 240s> /dev/null 2>&1'&"
+
+#Record the start time of migration  
+echo -e $sleeptime "to start migration \c" 
+date +"%T" 
+sleep $sleeptime
+echo -e start migration from $sourceIP to $destinationIP '\c' 
+date +"%T" 
+printdate=$(date +"%T")
+
+export LIBVIRT_DEFAULT_URI=qemu:///system
+
+        echo -e $x,Start Time From S to D,$workload,$sleeptime,$speed,$printdate '\c'>>derbyNlogS11.txt 
+	#Start the migration
+	memusg virsh migrate --live --verbose --persistent generic qemu+ssh://$destinationIP/system
+	#Record the End time of migration
+printdate=$(date +"%T")
+	echo ,End Time,$printdate >>derbyLongNlogS11.txt 
+echo -e End migration from $sourceIP to $destinationIP '\c'
+date +"%T" 
+
+sleep 3m
+echo End workload
+
+	#update the flag 
+	z=1	
+ 
+else
+	
+#clear the caches
+#ssh -n -f $VMip "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches && swapoff -a && swapon -a'"
+#sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches && swapoff -a && swapon -a'
+#ssh -n -f $sourceIP "sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches && swapoff -a && swapon -a'"
+
+
+
+#Run the workload
+#echo Start $workload workload   
+#ssh -n -f $VMip "sh -c 'cd /SPECjvm2008; nohup sudo java -jar SPECjvm2008.jar $workload --peak -wt 0 -ikv> /dev/null 2>&1'&"
+#ssh -n -f $VMip "sh -c 'sudo stress -m 1 --vm-bytes 1024M -t 240s> /dev/null 2>&1'&"
+
+
+#Record the start time of migration  
+#echo -e $sleeptime "to start migration \c" 
+#date +"%T" 
+#sleep $sleeptime
+echo -e start migration from $destinationIP to $sourceIP '\c' 
+date +"%T" 
+printdate=$(date +"%T")
+ ssh $destinationIP export LIBVIRT_DEFAULT_URI=qemu:///system
+        echo -e $x,Start Time From S to D,$workload,$sleeptime,$speed,$printdate '\c'>>log2.txt 
+	#Start the migration
+ssh  $destinationIP "export LIBVIRT_DEFAULT_URI=qemu:///system; virsh migrate --live --persistent generic qemu+ssh://$sourceIP/system"
+	#Record the End time of migration
+printdate=$(date +"%T")
+	echo ,End Time,$printdate >>log2.txt 
+
+echo -e End migration from $destinationIP to $sourceIP  '\c'
+date +"%T" 
+
+sleep 1m
+#echo End workload
+	#update the flag 
+z=0
+x=$x
+fi
+
+done
