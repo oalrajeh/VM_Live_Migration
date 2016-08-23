@@ -26,7 +26,7 @@ VMip=
 for ((x = 1; x <= i; x++))
 do
 case $x in
-		[0-9]|10)
+[0-9]|10)
 workload="compiler.compiler"
 ;;
 (1[1-9]|20)
