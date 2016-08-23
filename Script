@@ -118,12 +118,12 @@ printdate=$(date +"%T")
 
 export LIBVIRT_DEFAULT_URI=qemu:///system
 
-        echo -e $x,Start Time From S to D,$workload,$sleeptime,$speed,$printdate '\c'>>derbyNlogS11.txt 
+        echo -e $x,Start Time From S to D,$workload,$sleeptime,$speed,$printdate '\c'>>log.txt 
 	#Start the migration
-	memusg virsh migrate --live --verbose --persistent generic qemu+ssh://$destinationIP/system
+	memusg virsh migrate --live --verbose generic qemu+ssh://$destinationIP/system
 	#Record the End time of migration
 printdate=$(date +"%T")
-	echo ,End Time,$printdate >>derbyLongNlogS11.txt 
+	echo ,End Time,$printdate >>log.txt 
 echo -e End migration from $sourceIP to $destinationIP '\c'
 date +"%T" 
 
